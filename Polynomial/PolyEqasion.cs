@@ -12,7 +12,7 @@ namespace Polynomial
         private readonly List<PolynomialElement> elements = [];
 
         // O(n)
-        public PolyEquation(List<PolynomialElement> elements) : this()
+        public PolyEquation(IEnumerable<PolynomialElement> elements) : this()
         {
             Dictionary<int, double> exponentToCoefficient = [];
 
@@ -113,19 +113,10 @@ namespace Polynomial
         // O(n log(n)) nothing can be done
         private readonly double FindRootBisection(double x1, double x2, bool isGoingUp)
         {
-            double middleX = (x1 + x2) / 2;
-            double middleVal = Evaluate(middleX);
+            double middleVal = Evaluate((x1 + x2) / 2);
 
-            if (Math.Abs(middleVal) < EPSILON)
-                return middleX;
-
-            if(x1 == middleX || x2 == middleX)
-            {
-                Console.WriteLine("\ndouble limit reached");
-                Console.WriteLine(this);
-                Console.WriteLine(x1 + ", " + x2 + ", " + middleVal);
-                return x1;
-            }
+            if (Math.Abs(middleVal) < EPSILON || x2 - x1 < EPSILON)
+                return (x1 + x2) / 2;
 
             if (isGoingUp)
             {
@@ -155,7 +146,7 @@ namespace Polynomial
             {
                 double currentX = x + sign * step;
 
-                if (Evaluate(currentX) * y < 0)
+                if (Math.Sign(Evaluate(currentX)) * Math.Sign(y) < 0)
                 {
                     afterZero = currentX;
                     break;
@@ -248,12 +239,13 @@ namespace Polynomial
             }
 
             for (int i = 0; i < deterministicPoints.Count - 1; i++)
-                if (deterministicPoints[i].Y * deterministicPoints[i + 1].Y < 0)
-                    results.Add(FindRootBisection(deterministicPoints[i].X, deterministicPoints[i + 1].X, deterministicPoints[i].Y < deterministicPoints[i + 1].Y));
+                if (Math.Sign(deterministicPoints[i].Y) * Math.Sign(deterministicPoints[i + 1].Y) < 0)
+                    results.Add(FindRootBisection(deterministicPoints[i].X, deterministicPoints[i + 1].X,
+                        deterministicPoints[i].Y < deterministicPoints[i + 1].Y));
 
             DeterministicPoint last = deterministicPoints.Last();
 
-            if (derivativePoly.Evaluate(last.X + 0.1) * last.Y < 0)
+            if (Math.Sign(derivativePoly.Evaluate(last.X + 0.1)) * Math.Sign(last.Y) < 0)
             {
                 double res = FindRootInDetraction(last.X, false);
                 if (!double.IsNaN(res))
@@ -286,14 +278,12 @@ namespace Polynomial
 
         public static PolyEquation operator *(PolyEquation left, double right)
         {
-            List<PolynomialElement> newElements = left.elements.Select(e => e with { Coefficient = e.Coefficient * right }).ToList();
-            return new PolyEquation(newElements);
+            return new PolyEquation(left.elements.Select(e => e with { Coefficient = e.Coefficient * right }));
         }
 
         public static PolyEquation operator /(PolyEquation left, double right)
         {
-            List<PolynomialElement> newElements = left.elements.Select(e => e with { Coefficient = e.Coefficient / right }).ToList();
-            return new PolyEquation(newElements);
+            return new PolyEquation(left.elements.Select(e => e with { Coefficient = e.Coefficient / right }));
         }
 
 

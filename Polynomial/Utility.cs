@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Polynomial
+﻿namespace Polynomial
 {
     public static class Utility
     {
@@ -14,8 +12,8 @@ namespace Polynomial
                 int idxX = latex.IndexOf('x');
 
                 return new PolynomialElement(
-                    0 < idxX ? int.Parse(latex.Substring(0, idxX)) : 1,
-                    latex.Contains('^') ? int.Parse(latex.Substring(idxX + 3, latex.Length - idxX - 4)) : 1
+                    0 < idxX ? int.Parse(latex[..idxX]) : 1,
+                    latex.Contains('^') ? int.Parse(latex[(idxX + 3)..(latex.Length - 1)]) : 1
                 );
             }
 
@@ -31,11 +29,11 @@ namespace Polynomial
             }
             else if (idxPlus != -1 && (idxMinus == -1 || idxPlus < idxMinus))
             {
-                return Utility.LatexConvertor(latex.Substring(idxPlus + 1)) + LatexConvertorElement(latex.Substring(0, idxPlus));
+                return LatexConvertor(latex[(idxPlus + 1)..]) + LatexConvertorElement(latex[.. idxPlus]);
             }
             else
             {
-                return Utility.LatexConvertor(latex.Substring(idxMinus)) + LatexConvertorElement(latex.Substring(0, idxMinus));
+                return LatexConvertor(latex[idxMinus..]) + LatexConvertorElement(latex[.. idxMinus]);
             }
         }
     }

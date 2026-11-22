@@ -2,11 +2,11 @@
 
 namespace Polynomial
 {
-    public record struct PolynomialElement(double coefficient, int exponent) : IMathematicalElement<PolynomialElement>,
+    public record struct PolynomialElement(double Coefficient, int Exponent) : IMathematicalElement<PolynomialElement>,
         IMultiplyOperators<PolynomialElement, PolynomialElement, PolynomialElement>, IDivisionOperators<PolynomialElement, PolynomialElement, PolynomialElement>
     {
-        public double Coefficient = coefficient;
-        public int Exponent = exponent;
+        public double Coefficient = Coefficient;
+        public int Exponent = Exponent;
 
         public PolynomialElement(double coefficient) : this(coefficient, 0)
         { }
