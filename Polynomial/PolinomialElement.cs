@@ -1,19 +1,46 @@
 ﻿using System.Numerics;
-
 namespace Polynomial
 {
-    public record struct PolynomialElement(double Coefficient, int Exponent) : IMathematicalElement<PolynomialElement>,
+    public record struct PolynomialElement(double Coefficient, double Exponent) : IMathematicalElement<PolynomialElement>,
         IMultiplyOperators<PolynomialElement, PolynomialElement, PolynomialElement>, IDivisionOperators<PolynomialElement, PolynomialElement, PolynomialElement>
     {
         public double Coefficient = Coefficient;
-        public int Exponent = Exponent;
+        public double Exponent = Exponent;
+
+        public bool DoesNegativeXExists
+        {
+            get
+            {
+                if (!double.IsFinite(Exponent))
+                    return false;
+
+                if (double.IsInteger(Exponent))
+                    return true;
+
+                var (p, q) = Utility.DoubleToFraction(Exponent);
+                return q > 0 && !q.IsEven;
+            }
+        }
+
 
         public PolynomialElement(double coefficient) : this(coefficient, 0)
         { }
 
         public readonly double Evaluate(double x)
         {
-            return Coefficient * Math.Pow(x, Exponent);
+            if (x >= 0)
+                return Coefficient * Math.Pow(x, Exponent);
+
+            if (double.IsInteger(Exponent))
+                return Coefficient * Math.Pow(x, Exponent);
+
+            var (numerator, denominator) = Utility.DoubleToFraction(Exponent);
+
+            if (denominator.IsEven)
+                return double.NaN;
+
+            double negativeBaseSign = numerator.IsEven ? 1 : -1;
+            return Coefficient * negativeBaseSign * Math.Pow(Math.Abs(x), Exponent);
         }
 
         public readonly PolynomialElement Derivative()

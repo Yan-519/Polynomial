@@ -1,7 +1,6 @@
 ﻿using Polynomial;
 
-
-string latex = "10x-3x^{4}+13x^{-8}+x^{2}-84x^{3}";
+string latex = "5x^{-1.2}-x^{3}";
 
 PolyEquation poly = Utility.LatexConvertor(latex);
 //new(
@@ -14,7 +13,7 @@ PolyEquation poly = Utility.LatexConvertor(latex);
 
 Console.WriteLine(latex + " = " + poly);
 
-HashSet<double> roots = poly.Sol();
+HashSet<double> roots = poly.Solve();
 
 Console.WriteLine();
 if (roots.Count == 0)

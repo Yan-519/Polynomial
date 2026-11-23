@@ -14,7 +14,7 @@ namespace Polynomial
         // O(n)
         public PolyEquation(IEnumerable<PolynomialElement> elements) : this()
         {
-            Dictionary<int, double> exponentToCoefficient = [];
+            Dictionary<double, double> exponentToCoefficient = [];
 
             foreach (var element in elements)
             {
@@ -39,7 +39,7 @@ namespace Polynomial
         {
             double result = 0;
             foreach (var element in elements)
-                result += element.Coefficient * Math.Pow(x, element.Exponent);
+                result += element.Evaluate(x);
 
             return result;
         }
@@ -58,10 +58,12 @@ namespace Polynomial
         }
 
         // O(1)
-        private readonly HashSet<double> SolSimple(int degree)
+        private readonly HashSet<double> SolSimple(int degree, bool canBeNegative)
         {
             if (2 < degree)
                 throw new ArgumentException("Degree must be 2 or less for this method.");
+
+            HashSet<double> roots = [];
 
             if (degree == 2)
             {
@@ -73,28 +75,31 @@ namespace Polynomial
                     return [];
                 double root1 = (-b + Math.Sqrt(discriminant)) / (2 * a);
                 double root2 = (-b - Math.Sqrt(discriminant)) / (2 * a);
-                return [root1, root2];
+                roots = [root1, root2];
             }
             else if (degree == 1)
             {
                 double b = elements.FirstOrDefault(e => e.Exponent == 1).Coefficient;
                 double c = elements.FirstOrDefault(e => e.Exponent == 0).Coefficient;
                 double root = -c / b;
-                return [root];
+                roots = [root];
             }
 
-            return [];
+            if (canBeNegative)
+                return roots;
+
+            return roots.Where(x => 0 < x).ToHashSet();
         }
 
         // No change
-        public readonly List<DeterministicPoint> GetDeterministicPoints()
+        public readonly List<DeterministicPoint> GetDeterministicPoints(bool canBeNegative)
         {
             List<DeterministicPoint> points = [];
 
             PolyEquation derivativePoly = Derivative();
             PolyEquation secondDerivativePoly = derivativePoly.Derivative();
 
-            HashSet<double> criticalPoints = derivativePoly.Sol();
+            HashSet<double> criticalPoints = derivativePoly.Sol(canBeNegative);
 
             foreach (double x in criticalPoints)
             {
@@ -165,7 +170,7 @@ namespace Polynomial
         }
 
         // O(n) nothing can be done
-        public PolyEquation Normalize(int minExponent)
+        public PolyEquation Normalize(double minExponent)
         {
             List<PolynomialElement> newElements = [];
             foreach (var element in elements)
@@ -194,32 +199,30 @@ namespace Polynomial
         }
 
         // No change possible
-        public HashSet<double> Sol()
+        private HashSet<double> Sol(bool canBeNegative)
         {
-            int minExponent = elements.Min(e => e.Exponent);
+            double minExponent = elements.Min(e => e.Exponent);
             if (minExponent < 0)
             {
-                HashSet<double> normalizedRoots = Normalize(minExponent).Sol();
+                HashSet<double> normalizedRoots = Normalize(minExponent).Sol(canBeNegative);
                 normalizedRoots.Remove(0);
                 return normalizedRoots;
             }
 
-            int degree = elements.Max(e => e.Exponent);
-            if (degree <= 2)
-                return SolSimple(degree);
+            double degree = elements.Max(e => e.Exponent);
+            if (degree <= 2 && double.IsInteger(degree))
+                return SolSimple((int)degree, canBeNegative);
 
             if (0 < minExponent)
             {
-                HashSet<double> normalizedRoots = Normalize(minExponent).Sol();
+                HashSet<double> normalizedRoots = Normalize(minExponent).Sol(canBeNegative);
                 normalizedRoots.Add(0);
                 return normalizedRoots;
             }
 
-
-
             PolyEquation derivativePoly = Derivative();
 
-            List<DeterministicPoint> deterministicPoints = GetDeterministicPoints().OrderBy(p => p.X).ToList();
+            List<DeterministicPoint> deterministicPoints = GetDeterministicPoints(true).OrderBy(p => p.X).ToList();
 
             if (deterministicPoints.Count == 0)
                 return [FindRootNewton(0)];
@@ -231,19 +234,38 @@ namespace Polynomial
 
             DeterministicPoint first = deterministicPoints.First();
 
-            if (derivativePoly.Evaluate(first.X - 0.1) * first.Y > 0)
+            if (canBeNegative || 0 < first.X)
             {
-                double res = FindRootInDetraction(first.X, true);
-                if (!double.IsNaN(res))
-                    results.Add(res);
+                if (Math.Sign(derivativePoly.Evaluate(first.X - 0.1)) * Math.Sign(first.Y) > 0)
+                {
+                    double res = FindRootInDetraction(first.X, true);
+                    if (!double.IsNaN(res))
+                        results.Add(res);
+                }
             }
 
             for (int i = 0; i < deterministicPoints.Count - 1; i++)
-                if (Math.Sign(deterministicPoints[i].Y) * Math.Sign(deterministicPoints[i + 1].Y) < 0)
+            {
+                if (!canBeNegative)
+                {
+                    if (deterministicPoints[i + 1].X <= 0) continue;
+
+                    else if (deterministicPoints[i].X <= 0)
+                    {
+                        if (Math.Sign(Evaluate(0)) * Math.Sign(deterministicPoints[i + 1].Y) < 0)
+                            results.Add(FindRootBisection(0, deterministicPoints[i + 1].X,
+                                deterministicPoints[i].Y < deterministicPoints[i + 1].Y));
+                    }
+                }
+                else if (Math.Sign(deterministicPoints[i].Y) * Math.Sign(deterministicPoints[i + 1].Y) < 0)
                     results.Add(FindRootBisection(deterministicPoints[i].X, deterministicPoints[i + 1].X,
                         deterministicPoints[i].Y < deterministicPoints[i + 1].Y));
+            }
 
             DeterministicPoint last = deterministicPoints.Last();
+            double X = last.X;
+            if (!canBeNegative)
+                X = Math.Max(0, X);
 
             if (Math.Sign(derivativePoly.Evaluate(last.X + 0.1)) * Math.Sign(last.Y) < 0)
             {
@@ -253,6 +275,11 @@ namespace Polynomial
             }
 
             return results;
+        }
+
+        public HashSet<double> Solve()
+        {
+            return Sol(elements.All(e => e.DoesNegativeXExists));
         }
 
         // No change possible
